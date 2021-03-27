@@ -51,7 +51,7 @@
         <h2>Webcrawler</h2>
         <?php
             include 'database.php';
-            $result = null;
+            $link = "";
             $conn = OpenCon();
             if ($conn->connect_errno) 
                     { echo 'Failed to load data into database!'; } 
@@ -62,25 +62,36 @@
                 $isInDatabase = false;
                 if (substr($l,0,7)!='http://'){
                     if (substr($l,0,8)=='https://')
-                        echo "<br>Link: $l";
+                        $link = $l;
                     else
-                        echo "<br>Link: $crawl->base/$l";
+                        $link = "$crawl->base/$l"; 
                 }
+                else{
+                    $link = $l;
+                }
+                echo "<br>Link: $link";
                 
-
                 while($row = mysqli_fetch_array($result)){
-                    if ($row['link'] == "$crawl->base/$l" || $row['link'] == $l){
+                    echo "<br>Link aus Datenbank: " . $row['link'] ."<br>";
+                    if($row['link'] == $link){
+                        echo "Link ist gleich <br>";
                         $isInDatabase = true;
-                        break;
+                    }
+                    else{
+                        echo "ungleich";
                     }
                 }
+                mysqli_data_seek($result, 0);
+                echo "Is in Database: " . $isInDatabase . "<br>";
                 if($isInDatabase == false){
-                    $sql = "INSERT INTO linkTable (link, reg_date) VALUES (\"" . "$crawl->base/$l" . "\", DEFAULT)";
+                    echo "In If drin <br>";
+                    $sql = "INSERT INTO linkTable (link, reg_date) VALUES (\"" . $link . "\", DEFAULT)";
                     if (!$result = $conn->query($sql)) {
                         $conn->rollback();
                     } else {	
                         $conn->commit();
                         $result = getLinkTable($conn);
+                        echo mysqli_num_rows($result);
                     }
                 }
 				
