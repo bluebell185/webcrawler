@@ -8,6 +8,7 @@
         public function __construct($uri) {
             $this->base = $uri;
             $this->markup = $this->getMarkup($uri);
+           # print($this->markup);
         }
 
         public function getMarkup($uri) {
@@ -49,10 +50,42 @@
     <body>
         <h2>Webcrawler</h2>
         <?php
-            foreach($links as $l) {
-                if (substr($l,0,7)!='http://')
-                echo "<br>Link: $crawl->base/$l";
+            include 'database.php';
+            $result = null;
+            $conn = OpenCon();
+            if ($conn->connect_errno) 
+                    { echo 'Failed to load data into database!'; } 
+            else { 
+                $result = getLinkTable($conn);
             }
+            foreach($links as $l) {
+                $isInDatabase = false;
+                if (substr($l,0,7)!='http://'){
+                    if (substr($l,0,8)=='https://')
+                        echo "<br>Link: $l";
+                    else
+                        echo "<br>Link: $crawl->base/$l";
+                }
+                
+
+                while($row = mysqli_fetch_array($result)){
+                    if ($row['link'] == "$crawl->base/$l" || $row['link'] == $l){
+                        $isInDatabase = true;
+                        break;
+                    }
+                }
+                if($isInDatabase == false){
+                    $sql = "INSERT INTO linkTable (link, reg_date) VALUES (\"" . "$crawl->base/$l" . "\", DEFAULT)";
+                    if (!$result = $conn->query($sql)) {
+                        $conn->rollback();
+                    } else {	
+                        $conn->commit();
+                        $result = getLinkTable($conn);
+                    }
+                }
+				
+            }
+            CloseCon($conn);
         ?>
     </body>
 </html>
