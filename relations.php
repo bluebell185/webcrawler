@@ -8,7 +8,8 @@ else {
     $sql = "CREATE TABLE linkTable (
         id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         link VARCHAR(500) NOT NULL,
-        reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        titel VARCHAR(200),
+        reg_date TIMESTAMP NULL 
         )";
     
     if ($conn->query($sql) === TRUE) {

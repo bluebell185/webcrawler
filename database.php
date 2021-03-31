@@ -13,7 +13,7 @@
 	}
 
 	function getLinkTable($conn){
-		$sql = "SELECT * FROM linkTable";
+		$sql = "SELECT * FROM linktable WHERE reg_date < CURRENT_DATE - INTERVAL 1 DAY or reg_date is null";
 		if (!$result = $conn->query($sql)) {
 			echo 'Error result';
 		} else {			
