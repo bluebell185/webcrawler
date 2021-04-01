@@ -6,10 +6,8 @@
         public $base = '';
         #Konstruktor
         public function __construct($uri) {
-            print($uri);
             $this->base = $uri;
             $this->markup = $this->getMarkup($uri);
-           # print($this->markup);
         }
 
         public function getMarkup($uri) {
@@ -55,33 +53,175 @@
 <html>
     <body>
         <h2>Webcrawler</h2>
+        <br>
+	<h2> Link hinzufügen </h2>
+   
+	<form action="index.php" method="post">
+	  <label for="link">Link:</label><br>
+	  <input type="text" id="link" name="link"><br>
+	  <input type="submit" value="Hinzufügen">
+	</form> 
+
+    <br>
+	<h2> Suche </h2>
+	<form action="index.php" method="post">
+	  <label for="search">Search:</label><br>
+	  <input type="text" id="search" name="search"><br>
+	  <input type="submit" value="Search">
+	</form> 
+
+    
+    <div>
+
+
         <?php
             include 'database.php';
+            error_reporting(0); 
+           if ($_POST["search"] != null){
+                      
+                            search($_POST["search"]);
+                        
+                        }
+            else{
+                echo "Die Datenbank wird gerade befüllt. Sie können gerne trotzdem nach etwas suchen!";
+            }
+           
+            function search($postParameter){
+                $conn = OpenCon();
+                if ($conn->connect_errno) 
+                        { echo 'Failed to connect to database!'; } 
+                else { 
+                $searchString= $postParameter;
+                echo "<br>SearchString: ".$searchString;
+                
+                preg_match_all('/[äÄüÜöÖßa-zA-Z0-9][äÄüÜöÖßa-zA-Z0-9\-\_]*[äÄüÜöÖßa-zA-Z0-9]/i', $searchString, $words);
             
-            $link = "";
-            $result = null;
-            $conn = OpenCon();
-            set_time_limit(1000);
-            if ($conn->connect_errno) 
-                    { echo 'Failed to connect to database!'; } 
-            else { 
-                // safeLinks($links, $crawl, $conn, null);
-                // $result = getLinkTable($conn);
-                $result = getLinkTable($conn);
-                recursion($result, "http://www.dhbw-heidenheim.de", $conn);
-            #Es wird in 2 Ebenen durchlaufen
+                $wordid = -1;
+                $linkList = array();
             
+                
+                    # words durchgehen (jedes Wort der Anfrage)
+                    foreach($words as $wordArray){
+                        foreach($wordArray as $word){
+                            echo "<br>Einzelnes Wort: ".$word;
+                        # für jedes Wort:
+                            # ist Wort in Datenbank? wenn ja, dann welche ID?
+                            $sql = "SELECT * FROM wordTable where word LIKE \"%" . $word . "%\"";
+                            if (!$result = $conn->query($sql)) {
+                                echo 'Fail'; 
+                            } else {
+                                if ($result->num_rows === 0){
+                                    echo "Wort $word nicht in Datenbank!";
+                                }
+                                else{
+                                    $row = mysqli_fetch_array($result);	
+                                    #TODO durch das like kommen vermutlich teilweise mehrere Worte mit! anpassen!
+                                    $wordid = $row['id'];
+                                    echo "<br>WordID: ". $wordid;
+            
+                                    # welche Links sind mit dieser ID verbunden? -> Liste mit Links füllen
+                                    $sql = "SELECT * FROM wordLinkTable where wordID = \"" . $wordid . "\"";
+                                    if (!$result = $conn->query($sql)) {
+                                        echo 'Fail'; 
+                                    } else {
+                                         # links holen mit linkid
+                                        $sqlString = "SELECT * FROM LinkTable where ";
+                                        if ($result->num_rows === 0){
+                                            echo "Wort-Link nicht in Datenbank!";
+                                        }
+                                        else{
+                                            $i = 0;
+                                            while($row = mysqli_fetch_array($result)){
+                                                $id = $row['linkid'];
+                                                if($i != 0){
+                                                    $sqlString.="or ";
+                                                }
+                                                $sqlString.="id = $id ";
+                                                $i++;
+                                            }	
+                                            echo "<br>SQL-String: ". $sqlString;
+                                            #Ausführen sql   
+                                            if (!$result = $conn->query($sqlString)) {
+                                                echo 'Fail'; 
+                                            } else {
+                                                if ($result->num_rows === 0){
+                                                    echo "Wort-Link nicht in Datenbank!";
+                                                }
+                                                else{
+                                                    while($row = mysqli_fetch_array($result)){
+                                                        # Links in Liste füllen
+                                                        $linkList[] = $row;
+                                                    }
+                                                }
+                                            }                   
+                                        }
+                                       
+                                    }
+                                }
+                            }
+                            
+                        }
+                    }
+                    #TODO doppelte raus
+                    #TODO and erzwingen quasi (also dhbw heidenheim nur seiten, die beide Wörter beinhaltet zB)
+                    echo "<br>Anzahl Suchergebnisse: " . count($linkList);
+                    foreach($linkList as $row){
+                        echo "<br><br>" . $row['titel'] . "<br><a href=\"".$row['link']."\">". $row['link']."</a>" ;
+                    }
+                }
+                CloseCon($conn);
+            }
+            ?>
+        </div> 
+    <!-- Crawler läuft im "Hintergrund" -->
+        <div hidden>
+            <?php
+               # include 'database.php';
+                
+                $link = "";
+                $result = null;
+                
+                $conn = OpenCon();
+                set_time_limit(1000);
+                if ($conn->connect_errno) 
+                        { echo 'Failed to connect to database!'; } 
+                else { 
+                 
+                    if ($_POST["search"] != null){
+                      
+                           # search($_POST["search"], $conn);
+                        
+                    }
+                    else{
+                        echo "Test";
+                        $result = getLinkTable($conn);
+                    
+                        if ($_POST["link"] != null){
+                            echo "Post!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+                            recursion(null, $_POST["link"], $conn);
+                        }
+                        else{
+                            echo "Kein Post!!!!!!!";
+                            recursion($result, "http://www.dhbw-heidenheim.de", $conn);
+                        }     
+                    }
+                    // safeLinks($links, $crawl, $conn, null);
+                    // $result = getLinkTable($conn);
+                    
 
-            
-             }
-            CloseCon($conn);
-        ?>
+                
+                }
+                CloseCon($conn);
+            ?>
+        </div> 
+        
     </body>
 </html>
 
 <?php
 # http://talkerscode.com/webtricks/create-simple-web-crawler-using-php-and-mysql.php
     function recursion($result, $benutzerLink, $conn){
+        
         echo "Benutzerlink: ".$benutzerLink;
         for ($i = 0; $i<2; $i++){
             echo "Test1";
@@ -90,6 +230,7 @@
                 echo "TEst2 - " . $benutzerLink;
                 $crawl2 = new Crawler($benutzerLink);
                 $links2 = $crawl2->get('links');
+                $links2[] = $benutzerLink;
                 #TODO evtl überflüssig?
                 #$crawl = new Crawler('http://www.dhbw-heidenheim.de');
                 #$images = $crawl->get('images');
@@ -100,6 +241,7 @@
                 $row = mysqli_fetch_array($result);
                 $crawl2 = new Crawler($row['link']);
                 $links2 = $crawl2->get('links');
+                $links2[] = $benutzerLink;
                 while($row = mysqli_fetch_array($result)){                        
                     if ($links2 != null){
                         safeLinks($links2, $crawl2, $conn, $result);
@@ -217,8 +359,7 @@
 
         function wordCollector($link, $markup, $conn){
             $text = strip_tags($markup);
-            #TODO evtl regex anders? -> bei Umlauten wird getrennt! irgendwie verbessern! und trennen bei Bindestrich bitte auch einführen
-            preg_match_all('/[a-zA-Z0-9][a-zA-Z0-9\-\_]*[a-zA-Z0-9]/i', $text, $words);
+            preg_match_all('/[äÄüÜöÖßa-zA-Z0-9][äÄüÜöÖßa-zA-Z0-9\-\_]*[äÄüÜöÖßa-zA-Z0-9]/i', $text, $words);
             
             $wordID = -1;
             $linkID = -1;
@@ -304,4 +445,6 @@
                     }
             }
         }
+
+        
     ?>
