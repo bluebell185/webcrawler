@@ -303,7 +303,7 @@
                  $linkID = $row['id'];  
              }
 
-            foreach ($words as $wordArray2){
+            foreach ($words as $wordArray){
                 # Für die Entwicklung wurde die Anzahl der Worte einer Seite stark eingeshränkt, um die Funktionsfähigkeit zu testen
                 # Dies wurde nun auskommentiert: 
                 # $wordArray = array_slice($wordArray2, 0, 100); 
