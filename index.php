@@ -1,6 +1,6 @@
 <?php
     class Crawler {
-        #Seiteninhalt ???
+        #Seiteninhalt 
         protected $markup = '';
         #URL in base
         public $base = '';
@@ -11,39 +11,32 @@
         }
 
         public function getMarkup($uri) {
-            echo $uri;
-            return file_get_contents($uri);         
+            $markup = null;
+            try{
+                $markup = file_get_contents($uri);
+            } catch (Exception $e) {
+                echo 'Fehler ist aufgetreten: ',  $e->getMessage(), "<br>";
+            }
+            return $markup;         
         }
 
         public function get($type) {
             #type zB images, wird dann an Methodenname angehängt
             $method = "_get_{$type}";
             if (method_exists($this, $method)){
-                #entsprechende Methode wird aufgerufenüber die Funktion call_user_func
+                #entsprechende Methode wird aufgerufen über die Funktion call_user_func
                 return call_user_func(array($this, $method));
             }
         }
 
-        // protected function _get_images() {
-        //     if (!empty($this->markup)){
-        //         preg_match_all('/<img([^>]+)\/>/i', $this->markup, $images);
-        //         return !empty($images[1]) ? $images[1] : FALSE;
-        //     }
-        // }
-
         protected function _get_links() {
-            #TODO # filtern (stehen allein in Zeile als Link)
             if (!empty($this->markup)){
-                echo "Get links";
-                //preg_match_all('/<a([^>]+)\>(.*?)\<\/a\>/i', $this->markup, $links);
                preg_match_all('/href=\"(.*?)\"/i', $this->markup, $links);
-               #löscht .css-Links aus der Liste
+               # löscht .css-Links aus der Liste
                $cleanTags[1] = preg_grep("/(.*)\.css(.*)/", $links[1], PREG_GREP_INVERT);
-            
-            
-               #^((?!.css).)*$
-                #(.*)\.css(.*)
-                return !empty($cleanTags[1]) ? $cleanTags[1] : FALSE;
+               # löscht Links mit # aus der Liste
+               $links[1] = preg_grep("/(.*)#(.*)/", $cleanTags[1], PREG_GREP_INVERT);
+               return !empty($links[1]) ? $links[1] : FALSE;
             }
         }
     }
@@ -72,16 +65,14 @@
 
     
     <div>
-
-
         <?php
             include 'database.php';
-            error_reporting(0); 
-           if ($_POST["search"] != null){
-                      
-                            search($_POST["search"]);
-                        
-                        }
+            # Nutzer soll Errors nicht angezeigt bekommen
+            #error_reporting(0);
+            # Wenn der Nutzer etwas suchen möchte 
+            if ($_POST["search"] != null){    
+                search($_POST["search"]);
+            }
             else{
                 echo "Die Datenbank wird gerade befüllt. Sie können gerne trotzdem nach etwas suchen!";
             }
@@ -89,22 +80,20 @@
             function search($postParameter){
                 $conn = OpenCon();
                 if ($conn->connect_errno) 
-                        { echo 'Failed to connect to database!'; } 
+                        { echo 'Verbindung zur Datenbank fehlgeschlagen!'; } 
                 else { 
-                $searchString= $postParameter;
-                echo "<br>SearchString: ".$searchString;
-                
+                $searchString = $postParameter;
+                # Sucheingabe wird in einzelne Wörter zerlegt
                 preg_match_all('/[äÄüÜöÖßa-zA-Z0-9][äÄüÜöÖßa-zA-Z0-9\-\_]*[äÄüÜöÖßa-zA-Z0-9]/i', $searchString, $words);
             
                 $wordid = -1;
                 $linkList = array();
             
-                
-                    # words durchgehen (jedes Wort der Anfrage)
+                    # Wörter durchgehen (jedes Wort der Anfrage)
                     foreach($words as $wordArray){
                         foreach($wordArray as $word){
                             echo "<br>Einzelnes Wort: ".$word;
-                        # für jedes Wort:
+                            # für jedes Wort:
                             # ist Wort in Datenbank? wenn ja, dann welche ID?
                             $sql = "SELECT * FROM wordTable where word LIKE \"%" . $word . "%\"";
                             if (!$result = $conn->query($sql)) {
@@ -114,58 +103,59 @@
                                     echo "Wort $word nicht in Datenbank!";
                                 }
                                 else{
-                                    $row = mysqli_fetch_array($result);	
-                                    #TODO durch das like kommen vermutlich teilweise mehrere Worte mit! anpassen!
-                                    $wordid = $row['id'];
-                                    echo "<br>WordID: ". $wordid;
-            
-                                    # welche Links sind mit dieser ID verbunden? -> Liste mit Links füllen
-                                    $sql = "SELECT * FROM wordLinkTable where wordID = \"" . $wordid . "\"";
-                                    if (!$result = $conn->query($sql)) {
-                                        echo 'Fail'; 
-                                    } else {
-                                         # links holen mit linkid
-                                        $sqlString = "SELECT * FROM LinkTable where ";
-                                        if ($result->num_rows === 0){
-                                            echo "Wort-Link nicht in Datenbank!";
-                                        }
-                                        else{
-                                            $i = 0;
-                                            while($row = mysqli_fetch_array($result)){
-                                                $id = $row['linkid'];
-                                                if($i != 0){
-                                                    $sqlString.="or ";
-                                                }
-                                                $sqlString.="id = $id ";
-                                                $i++;
-                                            }	
-                                            echo "<br>SQL-String: ". $sqlString;
-                                            #Ausführen sql   
-                                            if (!$result = $conn->query($sqlString)) {
-                                                echo 'Fail'; 
-                                            } else {
-                                                if ($result->num_rows === 0){
-                                                    echo "Wort-Link nicht in Datenbank!";
-                                                }
-                                                else{
-                                                    while($row = mysqli_fetch_array($result)){
-                                                        # Links in Liste füllen
-                                                        $linkList[] = $row;
+                                    echo $result->num_rows;
+                                    # alle Ergebnisse, die durch das LIKE in der Abfrage zurückgegeben werden, durchsuchen
+                                    while($row = mysqli_fetch_array($result)){
+                                        $wordid = $row['id'];
+                
+                                        # welche Links sind mit dieser ID verbunden? -> Liste mit Links füllen
+                                        $sql = "SELECT * FROM wordLinkTable where wordID = \"" . $wordid . "\"";
+                                        if (!$resultWL = $conn->query($sql)) {
+                                            echo 'Fail'; 
+                                        } else {
+                                            # links holen mit linkid
+                                            $sqlString = "SELECT * FROM LinkTable where ";
+                                            if ($resultWL->num_rows === 0){
+                                                echo "Wort-Link nicht in Datenbank!";
+                                            }
+                                            else{
+                                                $i = 0;
+                                                while($rowWL = mysqli_fetch_array($resultWL)){
+                                                    $id = $rowWL['linkid'];
+                                                    if($i != 0){
+                                                        $sqlString.="or ";
                                                     }
-                                                }
-                                            }                   
+                                                    $sqlString.="id = $id ";
+                                                    $i++;
+                                                }	
+                                                echo "<br>SQL-String: ". $sqlString;
+                                                #Ausführen sql   
+                                                if (!$resultL = $conn->query($sqlString)) {
+                                                    echo 'Fail'; 
+                                                } else {
+                                                    if ($resultL->num_rows === 0){
+                                                        echo "Wort-Link nicht in Datenbank!";
+                                                    }
+                                                    else{
+                                                        while($rowL = mysqli_fetch_array($resultL)){
+                                                            # Links in Liste füllen
+                                                            $linkList[] = $rowL;
+                                                        }
+                                                    }
+                                                }                   
+                                            }
+                                        
                                         }
-                                       
                                     }
                                 }
                             }
                             
                         }
                     }
-                    #TODO doppelte raus
-                    #TODO and erzwingen quasi (also dhbw heidenheim nur seiten, die beide Wörter beinhaltet zB)
-                    echo "<br>Anzahl Suchergebnisse: " . count($linkList);
-                    foreach($linkList as $row){
+                    # doppelte Links raus
+                    $finalLinkList = array_unique($linkList, SORT_REGULAR);
+                    echo "<br>Anzahl Suchergebnisse: " . count($finalLinkList);
+                    foreach($finalLinkList as $row){
                         echo "<br><br>" . $row['titel'] . "<br><a href=\"".$row['link']."\">". $row['link']."</a>" ;
                     }
                 }
@@ -173,43 +163,31 @@
             }
             ?>
         </div> 
-    <!-- Crawler läuft im "Hintergrund" -->
-        <div hidden>
-            <?php
-               # include 'database.php';
-                
+        <!-- Crawler läuft im "Hintergrund" TODO-->
+        
+        <div >
+            <?php  
                 $link = "";
                 $result = null;
                 
                 $conn = OpenCon();
                 set_time_limit(1000);
                 if ($conn->connect_errno) 
-                        { echo 'Failed to connect to database!'; } 
+                        { echo 'Verbindung zur Datenbank fehlgeschlagen!'; } 
                 else { 
-                 
-                    if ($_POST["search"] != null){
-                      
-                           # search($_POST["search"], $conn);
-                        
-                    }
-                    else{
-                        echo "Test";
+                    if ($_POST["search"] == null){
                         $result = getLinkTable($conn);
-                    
+                        
+                        # Wenn der Nutzer einen Link hinzufügen will
                         if ($_POST["link"] != null){
-                            echo "Post!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
                             recursion(null, $_POST["link"], $conn);
                         }
                         else{
-                            echo "Kein Post!!!!!!!";
+                            # Wenn die Seite normal aufgerufen/aktualisiert wird
+                            echo "Sind wir hier?";
                             recursion($result, "http://www.dhbw-heidenheim.de", $conn);
                         }     
-                    }
-                    // safeLinks($links, $crawl, $conn, null);
-                    // $result = getLinkTable($conn);
-                    
-
-                
+                    }    
                 }
                 CloseCon($conn);
             ?>
@@ -219,34 +197,32 @@
 </html>
 
 <?php
-# http://talkerscode.com/webtricks/create-simple-web-crawler-using-php-and-mysql.php
     function recursion($result, $benutzerLink, $conn){
-        
-        echo "Benutzerlink: ".$benutzerLink;
+        echo "Benutzerlink: " .$benutzerLink;
+        #ob_start(); //Start output buffer for log
         for ($i = 0; $i<2; $i++){
-            echo "Test1";
+            echo "<br> i: ". $i;
             # für den allerersten Link bzw den Benutzerlink
             if ($result == null || $result->num_rows === 0){
-                echo "TEst2 - " . $benutzerLink;
+                echo "<br> Initial";
                 $crawl2 = new Crawler($benutzerLink);
                 $links2 = $crawl2->get('links');
                 $links2[] = $benutzerLink;
-                #TODO evtl überflüssig?
-                #$crawl = new Crawler('http://www.dhbw-heidenheim.de');
-                #$images = $crawl->get('images');
-                safeLinks($links2, $crawl2, $conn, null);
+                LinkCollector($links2, $crawl2, $conn, null);
             }
             else{
                 # für alle weiteren Links in der Tabelle
+                echo "<br> Weitere Links";
                 $row = mysqli_fetch_array($result);
                 $crawl2 = new Crawler($row['link']);
                 $links2 = $crawl2->get('links');
                 $links2[] = $benutzerLink;
                 while($row = mysqli_fetch_array($result)){                        
                     if ($links2 != null){
-                        safeLinks($links2, $crawl2, $conn, $result);
+                        LinkCollector($links2, $crawl2, $conn, $result);
                     }
                     
+                    # update timestamp of visited links
                     $sql = "UPDATE linktable SET reg_date= CURRENT_TIMESTAMP WHERE link = \"".$row['link']."\"";
                     if (!$result2 = $conn->query($sql)) {
                         echo "Update Rollback";
@@ -255,34 +231,21 @@
                         echo "Update Commit";
                         $conn->commit();
                     }
-                    
                 }
             }
             $result = getLinkTable($conn);
-            // echo "In For-Schleife! " . $result;
-            // while($row = mysqli_fetch_array($result)){                
-            //     $crawl2 = new Crawler($row['link']);
-            //     $links2 = $crawl2->get('links');
-
-            //     if ($links2 != null){
-            //         safeLinks($links2, $crawl, $conn, $result);
-            //     }
-                
-            //     $sql = "UPDATE linktable SET reg_date= CURRENT_TIMESTAMP WHERE link = \"".$row['link']."\"";
-            //     if (!$result2 = $conn->query($sql)) {
-            //         $conn->rollback();
-            //     } else {	
-            //         $conn->commit();
-            //     }
-                
-            // }
-            // $result = getLinkTable($conn);
         }
+        # for logging
+        // $output = ob_get_contents();
+        // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
+        // fwrite($myfile, $output);
+        // fclose($myfile);
+        // ob_end_clean(); //Discard output buffer
     }
 
     
 #TODO umbenennen in LinkCollector
-    function safeLinks($links, $crawl, $conn, $result){
+    function LinkCollector($links, $crawl, $conn, $result){
             #TODO heir wird die Liste der Links gekürzt -> Länge noch festlegen
             $shortenedListLinks = array_slice($links, 0, 100); 
             $link = "";
@@ -311,15 +274,6 @@
                         $isInDatabase = true;
                     } 
                 }
-                # result vom Typ mysqli_result? ODER DAtenbankabfrage?
-                // while($row = mysqli_fetch_array($result)){
-                //     #TODO hier später evtl Aufruf der id des Links 
-                //     if($row['link'] == $link){
-                //         $isInDatabase = true;
-                //         break;
-                //     }
-                // }
-                // mysqli_data_seek($result, 0);
 
                 if($isInDatabase == false){
                     #Titel finden
@@ -327,16 +281,13 @@
                     $titelLink = "Kein Titel";
                     if(strlen($str)>0)
                     {
-                        #$str2 = trim(preg_replace('/\s+/', ' ', $str)); // supports line breaks inside <title>
-                        preg_match("/\<title\>(.*)\<\/title\>/is",$str,$title); // ignore case
-                       # echo "<br> Titel 0: ".$title[0];
+                        preg_match("/\<title\>(.*)\<\/title\>/is",$str,$title); 
                         $titelLink = $title[1];
                         if ($titelLink == null || $titelLink == ""){
                             $titelLink = "Kein Titel";
                         }
                         settype($titelLink, "string");
                         $titelLink = substr($titelLink, 0, 200); 
-                        #echo "<br> Titel 1:  $titelLink<br><br>";
                     }
                     
                     $sql = "INSERT INTO linkTable (link, titel, reg_date) VALUES (\"" . $link . "\", \"". $titelLink. "\", DEFAULT)";
@@ -351,10 +302,12 @@
                 }
 
                 wordCollector($link, $crawl->getMarkup($link), $conn);
-				
             }
-
-
+            // $output = ob_get_contents(); //Grab output
+            // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
+            // fwrite($myfile, $output);
+            // fclose($myfile);
+            // ob_clean(); //Clean output buffer
         }
 
         function wordCollector($link, $markup, $conn){
@@ -369,8 +322,7 @@
                  echo "Error";
              }
              else{
-                 $row = mysqli_fetch_array($result);	
-                 #echo "<br> LinkID: " . $row['id'];
+                 $row = mysqli_fetch_array($result);
                  $linkID = $row['id'];  
              }
              #TODO was tun, wenn LinkId nicht geklappt hat?
@@ -379,9 +331,7 @@
                 $wordArray = array_slice($wordArray2, 0, 100); 
                 foreach($wordArray as $word){
                     #TODO optimieren
-                    settype($word, "string");
-                    #echo "<br> Word: " . $word;
-                     # Ist Wort in Worttabelle?
+                    # Ist Wort in Worttabelle?
                     $sqlQuery = "SELECT * FROM wordTable where word = \"" . $word . "\"";
                     if (!$result = $conn->query($sqlQuery)) {
                         echo 'Fail'; 
@@ -408,19 +358,14 @@
                         }
                         else{
                             if ($resultWord->num_rows === 0){
-                                echo "Echt jetzt???";
+                                echo "Das Wort befindet sich nicht in der Datenbank!";
                             }
                             else{
                                 $row = mysqli_fetch_array($resultWord);	
-                                #echo "<br> WordID: " . $row['id'];
                                 $wordID = $row['id']; 
                             }
                         }
                     }
-                   
-                    
-                   
-
 
                     # Wort und Link in WortLinkTabelle specihern, es sei denn ist schon drin
                     #TODO evtl optimieren (zuviele DB-Zugriffe?)
@@ -437,14 +382,14 @@
                                     echo "Commit";
                                     $conn->commit();
                                 }
-                            }	
-                            else{
-                                #echo "ist schon drin ";  
-                            }    
+                            }	  
                         }
                     }
             }
+            // $output = ob_get_contents(); //Grab output
+            // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
+            // fwrite($myfile, $output);
+            // fclose($myfile);
+            // ob_clean(); //Clean output buffer
         }
-
-        
     ?>
