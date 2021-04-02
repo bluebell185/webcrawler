@@ -45,7 +45,7 @@
 
 <html>
     <head>
-    <title>Page Title</title>
+    <title> Suchmaschine MoKat </title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -75,7 +75,7 @@
 
     <body>
     <div class="header">
-    <title> Suchmaschine MoKat </title>
+    
         <h1>Suchmaschine MoKat</h1>
         </div>
 
@@ -185,7 +185,8 @@
                     }
                     # doppelte Links raus
                     $finalLinkList = array_unique($linkList, SORT_REGULAR);
-                    echo "<br>Anzahl Suchergebnisse: " . count($finalLinkList);
+                    echo "<br> Suchbegriff: $postParameter <br>
+                    Anzahl Suchergebnisse: " . count($finalLinkList);
                     foreach($finalLinkList as $row){
                         echo "<br><br>" . $row['titel'] . "<br><a href=\"".$row['link']."\">". $row['link']."</a>" ;
                     }
