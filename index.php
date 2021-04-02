@@ -160,7 +160,7 @@
             ?>
         </div> 
         
-        <div hidden>
+        <div>
             <?php  
                 $link = "";
                 $result = null;
@@ -293,6 +293,31 @@
             
             $wordID = -1;
             $linkID = -1;
+            #Stoppwortliste auch großgeschriebene Worte: 
+            $stoppWords = array("and", "the", "of", "to", "einer", "eine", "eines", "einem", "einen", "der",
+            "die", "das", "dass", "daß", "du", "er", "sie", "es", "was", "wer", "wie",
+            "wir", "und", "oder", "ohne", "mit", "am", "im", "in", "aus", "auf", "ist",
+            "sein", "war", "wird", "ihr", "ihre", "ihres", "ihnen", "ihrer", "als", "für",
+            "von", "mit", "dich", "dir", "mich", "mir", "mein", "sein", "kein", "durch",
+            "wegen", "wird", "sich", "bei", "beim", "noch", "den", "dem", "zu", "zur",
+            "zum", "auf", "ein", "auch", "werden", "an", "des", "sein", "sind", "vor",
+            "nicht", "sehr", "um", "unsere", "ohne", "so", "da", "nur", "diese", "dieser",
+            "diesem", "dieses", "nach", "über", "mehr", "hat", "bis", "uns", "unser",
+            "unserer", "unserem", "unseres", "euch", "euers", "euer", "eurem", "ihr",
+            "ihres", "ihrer", "ihrem", "alle", "vom",
+            
+            "And", "The", "Of", "To", "Einer", "Eine", "Eines", "Einem", "Einen", "Der",
+            "Die", "Das", "Dass", "Daß", "Du", "Er", "Sie", "Es", "Was", "Wer", "Wie",
+            "Wir", "Und", "Oder", "Ohne", "Mit", "Am", "Im", "In", "Aus", "Auf", "Ist",
+            "Sein", "War", "Wird", "Ihr", "Ihre", "Ihres", "Ihnen", "Ihrer", "Als", "Für",
+            "Von", "Mit", "Dich", "Dir", "Mich", "Mir", "Mein", "Sein", "Kein", "Durch",
+            "Wegen", "Wird", "Sich", "Bei", "Beim", "Noch", "Den", "Dem", "Zu", "Zur",
+            "Zum", "Auf", "Ein", "Auch", "Werden", "An", "Des", "Sein", "Sind", "Vor",
+            "Nicht", "Sehr", "Um", "Unsere", "Ohne", "So", "Da", "Nur", "Diese", "Dieser",
+            "Diesem", "Dieses", "Nach", "Über", "Mehr", "Hat", "Bis", "Uns", "Unser",
+            "Unserer", "Unserem", "Unseres", "Euch", "Euers", "Euer", "Eurem", "Ihr",
+            "Ihres", "Ihrer", "Ihrem", "Alle", "Vom");
+
              # herausfinden, welche ids wort und link jeweils haben
              $sqlQuery2 = "SELECT * FROM linkTable where link = (\"" . $link . "\")";
              if (!$result = $conn->query($sqlQuery2)) {
@@ -308,59 +333,62 @@
                 # Dies wurde nun auskommentiert: 
                 # $wordArray = array_slice($wordArray2, 0, 100); 
                 foreach($wordArray as $word){
-                    # Ist Wort in Worttabelle?
-                    $sqlQuery = "SELECT * FROM wordTable where word = \"" . $word . "\"";
-                    if (!$result = $conn->query($sqlQuery)) {
-                        echo 'Error: '. $conn->error; 
-                    } else {
-                        if ($result->num_rows === 0){	
-                            # Fülle Wort in Worttabelle
-                            $sql = "INSERT INTO wordTable (word) VALUES (\"" . $word . "\")";
-                                if (!$result = $conn->query($sql)) {
-                                    echo 'Error: '. $conn->error; 
-                                    $conn->rollback();
-                                } else {	
-                                    echo "Commit";
-                                    $conn->commit();
-                                } 
-                        }   
-
-                        if ($linkID != -1){
-                            # Erfrage wordid aus Tabelle
-                            $sqlQueryWord = "SELECT * FROM wordTable where word = (\"" . $word . "\")";
-                            if (!$resultWord = $conn->query($sqlQueryWord)) {
-                                echo "Error " . $conn->error;
-                            }
-                            else{
-                                if ($resultWord->num_rows === 0){
-                                    echo "Das Wort befindet sich nicht in der Datenbank!";
-                                }
-                                else{
-                                    $row = mysqli_fetch_array($resultWord);	
-                                    $wordID = $row['id']; 
-                                }
-                            }
-                        }
-                    }
-
-                    if ($linkID != -1){
-                    # Wort und Link in WortLinkTabelle specihern, es sei denn ist schon drin
-                    $sqlQuery = "SELECT * FROM wordLinkTable where wordid = (\"" . $wordID . "\") and linkid = (\"" . $linkID . "\")";
+                    #Falls Wort kein Stoppwort
+                    if (!in_array($word, $stoppWords)){
+                         # Ist Wort in Worttabelle?
+                        $sqlQuery = "SELECT * FROM wordTable where word = \"" . $word . "\"";
                         if (!$result = $conn->query($sqlQuery)) {
                             echo 'Error: '. $conn->error; 
-                        } else {	
-                            if ($result->num_rows === 0){
-                                $sql = "INSERT INTO wordLinkTable (linkid, wordid) VALUES (\"" . $linkID . "\", \"" . $wordID . "\")";
-                                if (!$result = $conn->query($sql)) {
-                                    echo 'Error: '. $conn->error; 
-                                    $conn->rollback();
-                                } else {	
-                                    echo "Commit";
-                                    $conn->commit();
+                        } else {
+                            if ($result->num_rows === 0){	
+                                # Fülle Wort in Worttabelle
+                                $sql = "INSERT INTO wordTable (word) VALUES (\"" . $word . "\")";
+                                    if (!$result = $conn->query($sql)) {
+                                        echo 'Error: '. $conn->error; 
+                                        $conn->rollback();
+                                    } else {	
+                                        echo "Commit";
+                                        $conn->commit();
+                                    } 
+                            }   
+
+                            if ($linkID != -1){
+                                # Erfrage wordid aus Tabelle
+                                $sqlQueryWord = "SELECT * FROM wordTable where word = (\"" . $word . "\")";
+                                if (!$resultWord = $conn->query($sqlQueryWord)) {
+                                    echo "Error " . $conn->error;
                                 }
-                            }	  
+                                else{
+                                    if ($resultWord->num_rows === 0){
+                                        echo "Das Wort befindet sich nicht in der Datenbank!";
+                                    }
+                                    else{
+                                        $row = mysqli_fetch_array($resultWord);	
+                                        $wordID = $row['id']; 
+                                    }
+                                }
+                            }
                         }
-                    }
+
+                        if ($linkID != -1){
+                        # Wort und Link in WortLinkTabelle specihern, es sei denn ist schon drin
+                        $sqlQuery = "SELECT * FROM wordLinkTable where wordid = (\"" . $wordID . "\") and linkid = (\"" . $linkID . "\")";
+                            if (!$result = $conn->query($sqlQuery)) {
+                                echo 'Error: '. $conn->error; 
+                            } else {	
+                                if ($result->num_rows === 0){
+                                    $sql = "INSERT INTO wordLinkTable (linkid, wordid) VALUES (\"" . $linkID . "\", \"" . $wordID . "\")";
+                                    if (!$result = $conn->query($sql)) {
+                                        echo 'Error: '. $conn->error; 
+                                        $conn->rollback();
+                                    } else {	
+                                        echo "Commit";
+                                        $conn->commit();
+                                    }
+                                }	  
+                            }
+                        }
+                      }
                 }
             }
         }

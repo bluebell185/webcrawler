@@ -1,3 +1,12 @@
+<html>
+<head> 
+ <title> Tabellen erstellen </title> 
+</head>
+<body>
+</body>
+</html>
+
+
 <?php
 include 'database.php';
 
@@ -13,9 +22,9 @@ else {
         )";
     
     if ($conn->query($sql) === TRUE) {
-      echo "Table LinkTable created successfully";
+      echo "<br>Table LinkTable created successfully<br>";
     } else {
-      echo "Error creating table: " . $conn->error;
+      echo "<br>Error creating table:<br> " . $conn->error;
     }
 
     $sql = "CREATE TABLE wordTable (
@@ -24,9 +33,9 @@ else {
       )";
   
     if ($conn->query($sql) === TRUE) {
-      echo "Table WordTable created successfully";
+      echo "<br>Table WordTable created successfully<br>";
     } else {
-      echo "Error creating table: " . $conn->error;
+      echo "<br>Error creating table: " . $conn->error;
     }
 
     $sql = "CREATE TABLE wordLinkTable (
@@ -36,9 +45,9 @@ else {
       )";
     
     if ($conn->query($sql) === TRUE) {
-      echo "Table WordLinkTable created successfully";
+      echo "<br>Table WordLinkTable created successfully<br>";
     } else {
-      echo "Error creating table: " . $conn->error;
+      echo "<br>Error creating table:<br> " . $conn->error;
     }
 }
 
