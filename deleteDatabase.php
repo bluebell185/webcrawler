@@ -3,7 +3,7 @@ include 'database.php';
 
 $conn = OpenCon();
 if ($conn->connect_errno) 
-    { echo 'Error'; } 
+    {echo 'Error: '. $conn->error;  } 
 else { 
     $sql = "TRUNCATE linkTable";
     

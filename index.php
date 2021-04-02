@@ -45,22 +45,23 @@
 
 <html>
     <body>
-        <h2>Webcrawler</h2>
+    <title> Suchmaschine MoKat </title>
+        <h2>Suchmaschine MoKat</h2>
         <br>
 	<h2> Link hinzufügen </h2>
    
 	<form action="index.php" method="post">
 	  <label for="link">Link:</label><br>
-	  <input type="text" id="link" name="link"><br>
+	  <input type="url" id="link" name="link"><br>
 	  <input type="submit" value="Hinzufügen">
 	</form> 
 
     <br>
 	<h2> Suche </h2>
 	<form action="index.php" method="post">
-	  <label for="search">Search:</label><br>
+	  <label for="search">Suche:</label><br>
 	  <input type="text" id="search" name="search"><br>
-	  <input type="submit" value="Search">
+	  <input type="submit" value="Suche">
 	</form> 
 
     
@@ -68,7 +69,7 @@
         <?php
             include 'database.php';
             # Nutzer soll Errors nicht angezeigt bekommen
-            #error_reporting(0);
+            error_reporting(0); 
             # Wenn der Nutzer etwas suchen möchte 
             if ($_POST["search"] != null){    
                 search($_POST["search"]);
@@ -92,18 +93,16 @@
                     # Wörter durchgehen (jedes Wort der Anfrage)
                     foreach($words as $wordArray){
                         foreach($wordArray as $word){
-                            echo "<br>Einzelnes Wort: ".$word;
                             # für jedes Wort:
                             # ist Wort in Datenbank? wenn ja, dann welche ID?
                             $sql = "SELECT * FROM wordTable where word LIKE \"%" . $word . "%\"";
                             if (!$result = $conn->query($sql)) {
-                                echo 'Fail'; 
+                                echo 'Error: '. $conn->error; 
                             } else {
                                 if ($result->num_rows === 0){
-                                    echo "Wort $word nicht in Datenbank!";
+                                    echo "<br> Wort $word noch nicht in Datenbank!";
                                 }
                                 else{
-                                    echo $result->num_rows;
                                     # alle Ergebnisse, die durch das LIKE in der Abfrage zurückgegeben werden, durchsuchen
                                     while($row = mysqli_fetch_array($result)){
                                         $wordid = $row['id'];
@@ -111,12 +110,12 @@
                                         # welche Links sind mit dieser ID verbunden? -> Liste mit Links füllen
                                         $sql = "SELECT * FROM wordLinkTable where wordID = \"" . $wordid . "\"";
                                         if (!$resultWL = $conn->query($sql)) {
-                                            echo 'Fail'; 
+                                            echo 'Error: '. $conn->error; 
                                         } else {
                                             # links holen mit linkid
                                             $sqlString = "SELECT * FROM LinkTable where ";
                                             if ($resultWL->num_rows === 0){
-                                                echo "Wort-Link nicht in Datenbank!";
+                                                # Do nothing
                                             }
                                             else{
                                                 $i = 0;
@@ -128,13 +127,12 @@
                                                     $sqlString.="id = $id ";
                                                     $i++;
                                                 }	
-                                                echo "<br>SQL-String: ". $sqlString;
                                                 #Ausführen sql   
                                                 if (!$resultL = $conn->query($sqlString)) {
-                                                    echo 'Fail'; 
+                                                    echo 'Error: '. $conn->error; 
                                                 } else {
                                                     if ($resultL->num_rows === 0){
-                                                        echo "Wort-Link nicht in Datenbank!";
+                                                         # Do nothing
                                                     }
                                                     else{
                                                         while($rowL = mysqli_fetch_array($resultL)){
@@ -144,12 +142,10 @@
                                                     }
                                                 }                   
                                             }
-                                        
                                         }
                                     }
                                 }
                             }
-                            
                         }
                     }
                     # doppelte Links raus
@@ -163,9 +159,8 @@
             }
             ?>
         </div> 
-        <!-- Crawler läuft im "Hintergrund" TODO-->
         
-        <div >
+        <div hidden>
             <?php  
                 $link = "";
                 $result = null;
@@ -180,11 +175,11 @@
                         
                         # Wenn der Nutzer einen Link hinzufügen will
                         if ($_POST["link"] != null){
-                            recursion(null, $_POST["link"], $conn);
+                            $link = $_POST["link"];
+                            recursion(null, $link, $conn);
                         }
                         else{
                             # Wenn die Seite normal aufgerufen/aktualisiert wird
-                            echo "Sind wir hier?";
                             recursion($result, "http://www.dhbw-heidenheim.de", $conn);
                         }     
                     }    
@@ -198,13 +193,9 @@
 
 <?php
     function recursion($result, $benutzerLink, $conn){
-        echo "Benutzerlink: " .$benutzerLink;
-        #ob_start(); //Start output buffer for log
         for ($i = 0; $i<2; $i++){
-            echo "<br> i: ". $i;
             # für den allerersten Link bzw den Benutzerlink
             if ($result == null || $result->num_rows === 0){
-                echo "<br> Initial";
                 $crawl2 = new Crawler($benutzerLink);
                 $links2 = $crawl2->get('links');
                 $links2[] = $benutzerLink;
@@ -212,7 +203,6 @@
             }
             else{
                 # für alle weiteren Links in der Tabelle
-                echo "<br> Weitere Links";
                 $row = mysqli_fetch_array($result);
                 $crawl2 = new Crawler($row['link']);
                 $links2 = $crawl2->get('links');
@@ -225,31 +215,21 @@
                     # update timestamp of visited links
                     $sql = "UPDATE linktable SET reg_date= CURRENT_TIMESTAMP WHERE link = \"".$row['link']."\"";
                     if (!$result2 = $conn->query($sql)) {
-                        echo "Update Rollback";
+                        echo 'Error: '. $conn->error; 
                         $conn->rollback();
                     } else {	
-                        echo "Update Commit";
                         $conn->commit();
                     }
                 }
             }
             $result = getLinkTable($conn);
         }
-        # for logging
-        // $output = ob_get_contents();
-        // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
-        // fwrite($myfile, $output);
-        // fclose($myfile);
-        // ob_end_clean(); //Discard output buffer
     }
 
-    
-#TODO umbenennen in LinkCollector
     function LinkCollector($links, $crawl, $conn, $result){
-            #TODO heir wird die Liste der Links gekürzt -> Länge noch festlegen
             $shortenedListLinks = array_slice($links, 0, 100); 
             $link = "";
-            
+
             foreach($shortenedListLinks as $l) {
                 $isInDatabase = false;
                 if (substr($l,0,7)!='http://'){
@@ -263,18 +243,19 @@
                 }
                 echo "<br><br>Link: $link";
                 
+                # Ist der Link schon in der Datenbank?
                 $sql = "SELECT * FROM linkTable where link = \"" .$link . "\"";
                 if (!$result = $conn->query($sql)) {
-                    echo "Error: " . $conn->error;;
+                    echo "Error: " . $conn->error;
                     $isInDatabase = true;
                 }
                 else{
                     if ($result->num_rows != 0){
-                        echo "!=0";
                         $isInDatabase = true;
                     } 
                 }
 
+                # Falls Link nicht in der Datenbank ist
                 if($isInDatabase == false){
                     #Titel finden
                     $str = $crawl->getMarkup($link);
@@ -292,7 +273,7 @@
                     
                     $sql = "INSERT INTO linkTable (link, titel, reg_date) VALUES (\"" . $link . "\", \"". $titelLink. "\", DEFAULT)";
                     if (!$result = $conn->query($sql)) {
-                        echo "Fail";
+                        echo 'Error: '. $conn->error; 
                         $conn->rollback();
                     } else {	
                         echo "Commit";
@@ -303,14 +284,10 @@
 
                 wordCollector($link, $crawl->getMarkup($link), $conn);
             }
-            // $output = ob_get_contents(); //Grab output
-            // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
-            // fwrite($myfile, $output);
-            // fclose($myfile);
-            // ob_clean(); //Clean output buffer
         }
 
         function wordCollector($link, $markup, $conn){
+            # alle Wörter einer Seite bekommen und in Array speichern
             $text = strip_tags($markup);
             preg_match_all('/[äÄüÜöÖßa-zA-Z0-9][äÄüÜöÖßa-zA-Z0-9\-\_]*[äÄüÜöÖßa-zA-Z0-9]/i', $text, $words);
             
@@ -319,64 +296,63 @@
              # herausfinden, welche ids wort und link jeweils haben
              $sqlQuery2 = "SELECT * FROM linkTable where link = (\"" . $link . "\")";
              if (!$result = $conn->query($sqlQuery2)) {
-                 echo "Error";
+                echo 'Error: '. $conn->error; 
              }
              else{
                  $row = mysqli_fetch_array($result);
                  $linkID = $row['id'];  
              }
-             #TODO was tun, wenn LinkId nicht geklappt hat?
 
             foreach ($words as $wordArray2){
-                $wordArray = array_slice($wordArray2, 0, 100); 
+                # Für die Entwicklung wurde die Anzahl der Worte einer Seite stark eingeshränkt, um die Funktionsfähigkeit zu testen
+                # Dies wurde nun auskommentiert: 
+                # $wordArray = array_slice($wordArray2, 0, 100); 
                 foreach($wordArray as $word){
-                    #TODO optimieren
                     # Ist Wort in Worttabelle?
                     $sqlQuery = "SELECT * FROM wordTable where word = \"" . $word . "\"";
                     if (!$result = $conn->query($sqlQuery)) {
-                        echo 'Fail'; 
+                        echo 'Error: '. $conn->error; 
                     } else {
                         if ($result->num_rows === 0){	
                             # Fülle Wort in Worttabelle
                             $sql = "INSERT INTO wordTable (word) VALUES (\"" . $word . "\")";
                                 if (!$result = $conn->query($sql)) {
-                                    echo "Fail";
+                                    echo 'Error: '. $conn->error; 
                                     $conn->rollback();
                                 } else {	
                                     echo "Commit";
                                     $conn->commit();
                                 } 
                         }   
-                        else{
-                            echo "Existiert schon";
-                        }   
 
-                        # Erfrage wordid aus Tabelle
-                        $sqlQueryWord = "SELECT * FROM wordTable where word = (\"" . $word . "\")";
-                        if (!$resultWord = $conn->query($sqlQueryWord)) {
-                            echo "Error " . $conn->error;
-                        }
-                        else{
-                            if ($resultWord->num_rows === 0){
-                                echo "Das Wort befindet sich nicht in der Datenbank!";
+                        if ($linkID != -1){
+                            # Erfrage wordid aus Tabelle
+                            $sqlQueryWord = "SELECT * FROM wordTable where word = (\"" . $word . "\")";
+                            if (!$resultWord = $conn->query($sqlQueryWord)) {
+                                echo "Error " . $conn->error;
                             }
                             else{
-                                $row = mysqli_fetch_array($resultWord);	
-                                $wordID = $row['id']; 
+                                if ($resultWord->num_rows === 0){
+                                    echo "Das Wort befindet sich nicht in der Datenbank!";
+                                }
+                                else{
+                                    $row = mysqli_fetch_array($resultWord);	
+                                    $wordID = $row['id']; 
+                                }
                             }
                         }
                     }
 
+                    if ($linkID != -1){
                     # Wort und Link in WortLinkTabelle specihern, es sei denn ist schon drin
-                    #TODO evtl optimieren (zuviele DB-Zugriffe?)
                     $sqlQuery = "SELECT * FROM wordLinkTable where wordid = (\"" . $wordID . "\") and linkid = (\"" . $linkID . "\")";
                         if (!$result = $conn->query($sqlQuery)) {
-                            echo "ups";
+                            echo 'Error: '. $conn->error; 
                         } else {	
                             if ($result->num_rows === 0){
                                 $sql = "INSERT INTO wordLinkTable (linkid, wordid) VALUES (\"" . $linkID . "\", \"" . $wordID . "\")";
                                 if (!$result = $conn->query($sql)) {
-                                    echo "Fail";
+                                    echo 'Error: '. $conn->error; 
                                     $conn->rollback();
                                 } else {	
                                     echo "Commit";
@@ -385,11 +361,7 @@
                             }	  
                         }
                     }
+                }
             }
-            // $output = ob_get_contents(); //Grab output
-            // $myfile = fopen("log.txt", "w") or die("Unable to open file!");
-            // fwrite($myfile, $output);
-            // fclose($myfile);
-            // ob_clean(); //Clean output buffer
         }
     ?>
