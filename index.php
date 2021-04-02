@@ -44,28 +44,63 @@
 
 
 <html>
+    <head>
+    <title>Page Title</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    /* Style the body */
+    body {
+    font-family: Arial;
+    margin: 0;
+    }
+
+    /* Header/Logo Title */
+    .header {
+    padding: 60px;
+    text-align: center;
+    background: #1abc9c;
+    color: white;
+    font-size: 30px;
+    }
+
+    /* Page Content */
+    .content {display:flex; 
+    flex-direction: row;
+    justify-content: space-around; 
+
+    }
+    </style>
+    </head>
+
     <body>
+    <div class="header">
     <title> Suchmaschine MoKat </title>
-        <h2>Suchmaschine MoKat</h2>
-        <br>
-	<h2> Link hinzufügen </h2>
-   
+        <h1>Suchmaschine MoKat</h1>
+        </div>
+
+     <div class="content">
+	
+    <div>
+	<h4> Suche </h4>
 	<form action="index.php" method="post">
+	  <label for="search">Suchbegriff:</label><br>
+	  <input type="text" id="search" name="search"><br>
+	  <input type="submit" value="Los Gehts!">
+	</form> </div> 
+   
+   
+	<div> 
+    <h4> Link hinzufügen </h4>
+    <form action="index.php" method="post">
 	  <label for="link">Link:</label><br>
 	  <input type="url" id="link" name="link"><br>
 	  <input type="submit" value="Hinzufügen">
-	</form> 
+	</form> </div>
+</div>
 
-    <br>
-	<h2> Suche </h2>
-	<form action="index.php" method="post">
-	  <label for="search">Suche:</label><br>
-	  <input type="text" id="search" name="search"><br>
-	  <input type="submit" value="Suche">
-	</form> 
-
+    <div style= "text-align: center;">
     
-    <div>
         <?php
             include 'database.php';
             # Nutzer soll Errors nicht angezeigt bekommen
@@ -75,7 +110,7 @@
                 search($_POST["search"]);
             }
             else{
-                echo "Die Datenbank wird gerade befüllt. Sie können gerne trotzdem nach etwas suchen!";
+                echo "<br>Die Datenbank wird gerade befüllt. Sie können gerne trotzdem nach etwas suchen!<br>";
             }
            
             function search($postParameter){
@@ -160,7 +195,7 @@
             ?>
         </div> 
         
-        <div>
+        <div hidden>
             <?php  
                 $link = "";
                 $result = null;
